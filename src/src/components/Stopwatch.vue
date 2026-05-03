@@ -13,6 +13,7 @@ const emit = defineEmits<{
   start: [];
   pause: [];
   reset: [];
+  'finish-period': [];
 }>();
 
 const display = computed(() => `P${props.currentPeriod} ${formatClock(props.elapsed)}`);
@@ -24,7 +25,14 @@ const display = computed(() => `P${props.currentPeriod} ${formatClock(props.elap
     <div class="controls">
       <button v-if="!isRunning" class="primary" @click="emit('start')">Start</button>
       <button v-else class="warn" @click="emit('pause')">Pauze</button>
-      <button class="ghost" :disabled="isRunning" @click="emit('reset')">Reset</button>
+      <button
+        v-if="isRunning"
+        class="finish"
+        @click="emit('finish-period')"
+      >
+        Afronden
+      </button>
+      <button v-else class="ghost" @click="emit('reset')">Reset</button>
     </div>
     <div class="period">Periode {{ currentPeriod }} / {{ totalPeriods }}</div>
   </div>
@@ -74,6 +82,14 @@ const display = computed(() => `P${props.currentPeriod} ${formatClock(props.elap
 }
 .ghost:disabled {
   opacity: 0.4;
+}
+.finish {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+.finish:hover {
+  background: #1d4ed8;
 }
 .period {
   grid-column: 1 / -1;
