@@ -122,7 +122,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 
 ## Fase 4 — Live wedstrijdscherm
 
-### Stap 4.1 — MatchView basis + Stopwatch 🔲
+### Stap 4.1 — MatchView basis + Stopwatch ✅
 **Doel:** Wedstrijd openen, stopwatch werkt.
 **Acties:**
 - `MatchView.vue` laadt match op `:id`.
@@ -133,7 +133,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** klok loopt, persist na reload, Wake Lock werkt op mobiel.
 **Review:** geen drift > 1s, periode-overgang werkt.
 
-### Stap 4.2 — Field & Bench componenten (zonder D&D) 🔲
+### Stap 4.2 — Field & Bench componenten (zonder D&D) ✅
 **Doel:** Statische rendering van formatie + bench.
 **Acties:**
 - `Field.vue`: rendert zones obv `getFormation(match.type)`, gebruikt CSS-grid met "K" boven, "A" onder.
@@ -143,7 +143,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** veld toont initial formatie correct voor 6/7/11.
 **Review:** layout klopt visueel, highlight werkt.
 
-### Stap 4.3 — Drag & Drop 🔲
+### Stap 4.3 — Drag & Drop ✅
 **Doel:** Spelers verplaatsen tussen bench/zones.
 **Acties:**
 - `vue-draggable-plus` integreren: bench ↔ zone, zone ↔ zone.
@@ -152,7 +152,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** D&D werkt op desktop én touch.
 **Review:** geen ghost-state, geen dubbele plaatsing.
 
-### Stap 4.4 — Actiebalk: Goal / Assist / Volgende beurt 🔲
+### Stap 4.4 — Actiebalk: Goal / Assist / Volgende beurt ✅
 **Doel:** Events registreren, beurt afsluiten.
 **Acties:**
 - `ActionBar.vue` (sticky bottom).
@@ -162,7 +162,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** events en beurten verschijnen in DB; stats-dashboard updatet.
 **Review:** geen race-conditions met stopwatch-persist; modals goed bedienbaar.
 
-### Stap 4.5 — Wedstrijd beëindigen 🔲
+### Stap 4.5 — Wedstrijd beëindigen ✅
 **Doel:** Match afsluiten en stats finaliseren.
 **Acties:**
 - Bij laatste-periode-einde knop "Wedstrijd beëindigen" → `status:'finished'`, sluit lopende Turn.
