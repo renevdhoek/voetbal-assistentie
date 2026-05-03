@@ -18,7 +18,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** `npm run dev` toont default Vite-pagina.
 **Review:** project draait lokaal, geen TS-fouten.
 
-### Stap 1.2 — Dependencies & mappenstructuur 🔲
+### Stap 1.2 — Dependencies & mappenstructuur ✅
 **Doel:** Alle libs geïnstalleerd, mappen aangemaakt.
 **Acties:**
 - Installeren: `dexie`, `vue-router`, `vue-draggable-plus`, `vite-plugin-pwa`.
@@ -28,7 +28,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** lege bestanden + werkende imports.
 **Review:** type-check slaagt, structuur klopt met SDD.
 
-### Stap 1.3 — Router & app shell 🔲
+### Stap 1.3 — Router & app shell ✅
 **Doel:** Navigatie tussen 4 views.
 **Acties:**
 - `vue-router` (hash mode) met routes `/players`, `/matches`, `/matches/:id`, `/settings`.
@@ -37,7 +37,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** klikken tussen views werkt.
 **Review:** routing werkt, geen 404s, hash-mode actief.
 
-### Stap 1.4 — Dexie database & repositories 🔲
+### Stap 1.4 — Dexie database & repositories ✅
 **Doel:** IndexedDB werkt, Settings-singleton wordt geseed.
 **Acties:**
 - `src/db/database.ts`: Dexie class met `version(1).stores(...)` zoals SDD §3.2.
@@ -47,7 +47,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** in DevTools → IndexedDB zichtbaar, settings-record bestaat na eerste app-load.
 **Review:** schema klopt, geen runtime-errors, repositories typed correct.
 
-### Stap 1.5 — PWA-config 🔲
+### Stap 1.5 — PWA-config ✅
 **Doel:** App is installeerbaar en offline bruikbaar.
 **Acties:**
 - `vite.config.ts` met `vite-plugin-pwa` (autoUpdate, precache app shell).

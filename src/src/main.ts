@@ -1,5 +1,14 @@
-import { createApp } from 'vue'
-import './style.css'
-import App from './App.vue'
+import { createApp } from 'vue';
+import './style.css';
+import App from './App.vue';
+import { router } from './router';
+import { getSettings } from './db/repositories/settings';
+import { registerSW } from 'virtual:pwa-register';
 
-createApp(App).mount('#app')
+// Ensure Settings singleton is seeded.
+getSettings().catch((err) => console.error('Failed to seed settings', err));
+
+// Register service worker (auto-update).
+registerSW({ immediate: true });
+
+createApp(App).use(router).mount('#app');
