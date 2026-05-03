@@ -45,6 +45,7 @@ describe('computePlayerStats', () => {
       assists: 0,
       totalTurns: 3,
       preferredPosTurns: 2,
+      keeperTurns: 0,
     });
   });
 
@@ -77,6 +78,7 @@ describe('computePlayerStats', () => {
       assists: 1,
       totalTurns: 2,
       preferredPosTurns: 1,
+      keeperTurns: 0,
     });
   });
 });
@@ -109,8 +111,8 @@ describe('computeAllStats', () => {
       ],
     });
     const result = computeAllStats(players, [m]);
-    expect(result.get(1)).toEqual({ goals: 0, assists: 1, totalTurns: 2, preferredPosTurns: 1 });
-    expect(result.get(2)).toEqual({ goals: 1, assists: 0, totalTurns: 2, preferredPosTurns: 2 });
+    expect(result.get(1)).toEqual({ goals: 0, assists: 1, totalTurns: 2, preferredPosTurns: 1, keeperTurns: 1 });
+    expect(result.get(2)).toEqual({ goals: 1, assists: 0, totalTurns: 2, preferredPosTurns: 2, keeperTurns: 0 });
   });
 
   it('ignores events for unknown players', () => {

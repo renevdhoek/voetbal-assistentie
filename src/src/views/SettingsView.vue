@@ -76,7 +76,7 @@ watch(settings, () => {
 
 <style scoped>
 .view {
-  padding: 1rem;
+  padding: 0.5rem;
   max-width: 480px;
 }
 .form {

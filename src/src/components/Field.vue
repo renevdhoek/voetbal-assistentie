@@ -7,6 +7,8 @@ const props = defineProps<{
   formation: Position[];
   positions: PositionAssignment[];
   players: Player[];
+  /** Per-speler tellers binnen huidige wedstrijd (beurten, keepersbeurten). */
+  statsByPlayer?: Map<number, { matchTurns: number; keeperTurns: number }>;
 }>();
 
 const emit = defineEmits<{
@@ -127,6 +129,21 @@ const positionLabels: Record<Position, string> = {
           >
             <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
             <div class="pname">{{ element.name }}</div>
+            <div
+              v-if="element.id !== undefined && props.statsByPlayer?.get(element.id)"
+              class="player-stats"
+            >
+              <span class="badge-turns" title="Beurten in deze wedstrijd">
+                🔁{{ props.statsByPlayer.get(element.id)!.matchTurns }}
+              </span>
+              <span
+                v-if="(props.statsByPlayer.get(element.id)?.keeperTurns ?? 0) > 0"
+                class="badge-keeper"
+                title="Keepersbeurten in deze wedstrijd"
+              >
+                🧤{{ props.statsByPlayer.get(element.id)!.keeperTurns }}
+              </span>
+            </div>
           </button>
         </VueDraggable>
         <button
@@ -151,8 +168,8 @@ const positionLabels: Record<Position, string> = {
 .field {
   display: grid;
   grid-template-rows: repeat(4, auto);
-  gap: 0.5rem;
-  padding: 0.75rem;
+  gap: 0.35rem;
+  padding: 0.5rem;
   background: #14532d;
   border-radius: 8px;
   background-image: linear-gradient(
@@ -242,6 +259,19 @@ const positionLabels: Record<Position, string> = {
   font-weight: 600;
   color: #111;
   word-break: break-word;
+}
+.player-stats {
+  margin-top: 0.15rem;
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.badge-keeper {
+  color: #b45309;
+  font-weight: 600;
 }
 .empty-slot {
   font-weight: 700;

@@ -27,7 +27,7 @@ const emit = defineEmits<{ close: [] }>();
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.5rem;
   z-index: 100;
 }
 .modal {
@@ -45,7 +45,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
 }
 header h2 {
@@ -61,7 +61,7 @@ header h2 {
   min-width: 40px;
 }
 .body {
-  padding: 1rem;
+  padding: 0.6rem;
   overflow-y: auto;
 }
 </style>

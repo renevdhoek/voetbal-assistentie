@@ -4,6 +4,8 @@ import type { Player } from '../types/domain';
 
 const props = defineProps<{
   players: Player[];
+  /** Per-speler tellers binnen huidige wedstrijd (beurten, keepersbeurten). */
+  statsByPlayer?: Map<number, { matchTurns: number; keeperTurns: number }>;
 }>();
 
 const emit = defineEmits<{
@@ -32,6 +34,21 @@ function onUpdate(value: Player[]) {
       >
         <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
         <div class="name">{{ element.name }}</div>
+        <div
+          v-if="element.id !== undefined && props.statsByPlayer?.get(element.id)"
+          class="chip-stats"
+        >
+          <span class="badge-turns" title="Beurten in deze wedstrijd">
+            🔁{{ props.statsByPlayer.get(element.id)!.matchTurns }}
+          </span>
+          <span
+            v-if="(props.statsByPlayer.get(element.id)?.keeperTurns ?? 0) > 0"
+            class="badge-keeper"
+            title="Keepersbeurten in deze wedstrijd"
+          >
+            🧤{{ props.statsByPlayer.get(element.id)!.keeperTurns }}
+          </span>
+        </div>
       </div>
     </VueDraggable>
     <p v-if="props.players.length === 0" class="muted small">Iedereen op het veld</p>
@@ -86,5 +103,20 @@ function onUpdate(value: Player[]) {
 }
 .small {
   font-size: 0.85rem;
+}
+.chip-stats {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: 0.25rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--color-border);
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.badge-keeper {
+  color: #b45309;
+  font-weight: 600;
 }
 </style>

@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import Modal from '../components/Modal.vue';
 import MatchForm from '../components/MatchForm.vue';
 import { useMatches } from '../composables/useMatches';
+import { usePlayers } from '../composables/usePlayers';
 import { useSettings } from '../composables/useSettings';
-import { computeOwnScore, formatMatchDate, statusLabel } from '../lib/matchDisplay';
+import {
+  computeOwnScore,
+  computeOpponentScore,
+  computeMatchStats,
+  formatMatchDate,
+  statusLabel,
+} from '../lib/matchDisplay';
 import type { Match } from '../types/domain';
 
 const { matches, isLoading, add, remove } = useMatches();
+const { players } = usePlayers();
 const { settings } = useSettings();
 
 const isFormOpen = ref(false);
+const statsMatch = ref<Match | null>(null);
+const statsRows = computed(() =>
+  statsMatch.value ? computeMatchStats(statsMatch.value, players.value) : [],
+);
 
 function openCreate() {
   isFormOpen.value = true;
+}
+
+function openStats(match: Match) {
+  statsMatch.value = match;
 }
 
 async function onSubmit(data: { opponent: string; date: Date }) {
@@ -65,10 +81,18 @@ async function onDelete(match: Match) {
               <span class="badge" :data-status="m.status">{{ statusLabel(m) }}</span>
             </div>
           </div>
-          <div class="score" aria-label="Eigen doelpunten">
-            {{ computeOwnScore(m.events) }}
+          <div class="score" aria-label="Stand">
+            {{ computeOwnScore(m.events) }} - {{ computeOpponentScore(m.events) }}
           </div>
         </RouterLink>
+        <button
+          class="stats"
+          @click="openStats(m)"
+          aria-label="Statistieken bekijken"
+          title="Statistieken"
+        >
+          📊
+        </button>
         <button class="danger" @click="onDelete(m)" aria-label="Verwijderen">×</button>
       </li>
     </ul>
@@ -81,6 +105,45 @@ async function onDelete(match: Match) {
         @cancel="isFormOpen = false"
       />
     </Modal>
+
+    <Modal
+      :open="statsMatch !== null"
+      :title="statsMatch ? `Statistieken \u2014 vs ${statsMatch.opponent}` : 'Statistieken'"
+      @close="statsMatch = null"
+    >
+      <div v-if="statsMatch" class="match-stats">
+        <p class="meta">
+          {{ formatMatchDate(statsMatch.date) }} · {{ statsMatch.type }}v{{ statsMatch.type }} ·
+          stand <strong>{{ computeOwnScore(statsMatch.events) }} - {{ computeOpponentScore(statsMatch.events) }}</strong>
+        </p>
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Speler</th>
+              <th title="Beurten">B</th>
+              <th>K</th>
+              <th>V</th>
+              <th>M</th>
+              <th>A</th>
+              <th>⚽</th>
+              <th>🅰️</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in statsRows" :key="row.player.id">
+              <td>{{ row.player.name }}</td>
+              <td>{{ row.matchTurns }}</td>
+              <td>{{ row.positions.K }}</td>
+              <td>{{ row.positions.V }}</td>
+              <td>{{ row.positions.M }}</td>
+              <td>{{ row.positions.A }}</td>
+              <td>{{ row.goals }}</td>
+              <td>{{ row.assists }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Modal>
   </section>
 </template>
 
@@ -88,7 +151,7 @@ async function onDelete(match: Match) {
 .page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0.5rem;
 }
 .page-header {
   display: flex;
@@ -195,5 +258,36 @@ async function onDelete(match: Match) {
 }
 .danger:hover {
   background: #fee2e2;
+}
+.stats {
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: #fff;
+  font-size: 1.1rem;
+}
+.stats:hover {
+  background: #eef2ff;
+}
+.match-stats .meta {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.stats-table th,
+.stats-table td {
+  padding: 0.2rem 0.35rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+}
+.stats-table th:first-child,
+.stats-table td:first-child {
+  text-align: left;
 }
 </style>

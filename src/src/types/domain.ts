@@ -4,7 +4,7 @@
 export type Position = 'K' | 'V' | 'M' | 'A';
 export type MatchType = 6 | 7 | 11;
 export type MatchStatus = 'planned' | 'running' | 'paused' | 'finished';
-export type EventType = 'goal' | 'assist';
+export type EventType = 'goal' | 'assist' | 'opponentGoal';
 
 /** Singleton (id = 1) with competition-wide settings. */
 export interface Settings {
@@ -34,7 +34,8 @@ export interface Turn {
 
 export interface MatchEvent {
   type: EventType;
-  playerId: number;
+  /** Speler-id voor goal/assist; afwezig voor tegenstander-doelpunt. */
+  playerId?: number;
   turnIndex: number;
 }
 

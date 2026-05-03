@@ -19,7 +19,7 @@ import { useStopwatch } from '../composables/useStopwatch';
 import { getFormation } from '../lib/formations';
 import { suggestFormation } from '../lib/suggester';
 import { computeAllStats, ZERO_STATS } from '../lib/stats';
-import { computeOwnScore } from '../lib/matchDisplay';
+import { computeOwnScore, computeOpponentScore, computeMatchStats } from '../lib/matchDisplay';
 import type { Match, MatchEvent, Player, PositionAssignment, Position, Turn } from '../types/domain';
 
 const route = useRoute();
@@ -81,6 +81,12 @@ const benchPlayers = computed(() => {
 });
 
 const ownScore = computed(() => (match.value ? computeOwnScore(match.value.events) : 0));
+const opponentScore = computed(() => (match.value ? computeOpponentScore(match.value.events) : 0));
+// Aantal wissel-beurten: totale beurten minus één start-beurt per gespeelde periode.
+const swapCount = computed(() => {
+  if (!match.value) return 0;
+  return Math.max(0, match.value.turns.length - match.value.currentPeriod);
+});
 
 // ---- Stopwatch wiring -----------------------------------------------------
 const stopwatch = useStopwatch({
@@ -140,14 +146,32 @@ async function onPause() {
 }
 
 async function onReset() {
-  if (!confirm('Stopwatch terugzetten naar 0?')) return;
+  if (!match.value) return;
+  if (!confirm('Wedstrijd resetten? Stand, doelpunten, assists en alle beurten worden gewist.')) return;
   stopwatch.reset();
+  didInitTurn = false;
+  await persist({
+    status: 'planned',
+    currentPeriod: 1,
+    elapsedSeconds: 0,
+    turns: [],
+    events: [],
+  });
+  pendingPositions.value = null;
+  await initialiseFirstTurn();
 }
 
-const periodEndPrompt = ref(false);
-function handlePeriodEnd() {
-  void persist({ status: 'paused' });
-  periodEndPrompt.value = true;
+async function handlePeriodEnd() {
+  if (!match.value) return;
+  stopwatch.pause();
+  // Laatste periode: wedstrijd beëindigen.
+  if (match.value.currentPeriod >= totalPeriods.value) {
+    await endMatch();
+    return;
+  }
+  // Anders: direct door naar volgende periode. Stopwatch blijft op pauze
+  // zodat de coach eerst eventuele wissels kan doorvoeren.
+  await nextPeriod();
 }
 
 async function nextPeriod() {
@@ -169,7 +193,6 @@ async function nextPeriod() {
     positions: last ? [...last.positions] : [],
   };
   await persist({ turns: [...match.value!.turns, newTurn] });
-  periodEndPrompt.value = false;
 }
 
 // ---- Turn / formation -----------------------------------------------------
@@ -217,8 +240,21 @@ async function confirmSwap() {
   await persist({ turns });
 }
 
-/** Herstel de wissel: gooi de pending opstelling weg, oude beurt blijft ongewijzigd. */
-function revertSwap() {
+/**
+ * Herstel: pas de opstelling van de huidige beurt aan zonder een nieuwe beurt
+ * te openen. Wordt gebruikt als correctie van een eerdere wissel zodat de
+ * statistiek niet ten onrechte een extra beurt telt.
+ */
+async function correctSwap() {
+  if (!match.value || !currentTurn.value || pendingPositions.value === null) return;
+  const turns = [...match.value.turns];
+  turns[turns.length - 1] = { ...currentTurn.value, positions: pendingPositions.value };
+  pendingPositions.value = null;
+  await persist({ turns });
+}
+
+/** Annuleer de pending wissel: gooi de voorgestelde opstelling weg. */
+function cancelSwap() {
   pendingPositions.value = null;
 }
 
@@ -322,6 +358,11 @@ async function onAssist(playerId: number) {
   await pushEvent({ type: 'assist', playerId, turnIndex: match.value.turns.length - 1 });
 }
 
+async function onOpponentGoal() {
+  if (!currentTurn.value || !match.value) return;
+  await pushEvent({ type: 'opponentGoal', turnIndex: match.value.turns.length - 1 });
+}
+
 // ---- Statistieken ---------------------------------------------------------
 const statsOpen = ref(false);
 const allMatches = ref<Match[]>([]);
@@ -332,7 +373,7 @@ const allMatchesSub = liveQuery(() => db.matches.toArray()).subscribe({
 });
 onScopeDispose(() => allMatchesSub.unsubscribe());
 
-interface MatchPlayerStat {
+interface MatchPlayerRow {
   player: Player;
   matchTurns: number;
   positions: Record<Position, number>;
@@ -340,38 +381,44 @@ interface MatchPlayerStat {
   onFieldPosition: Position | null;
 }
 
-const matchStats = computed<MatchPlayerStat[]>(() => {
-  const turns = match.value?.turns ?? [];
+const matchStats = computed<MatchPlayerRow[]>(() => {
+  if (!match.value) return [];
+  // Gebruik gedeelde helper, maar bereken “nu op het veld” nog altijd uit
+  // displayedPositions zodat een lopende of pending swap correct wordt getoond.
   const fieldIds = new Set<number>();
   const fieldPosById = new Map<number, Position>();
   for (const a of displayedPositions.value) {
     fieldIds.add(a.playerId);
     fieldPosById.set(a.playerId, a.position);
   }
-  return players.value
-    .filter((p): p is Player & { id: number } => p.id !== undefined)
-    .map((p) => {
-      const positions: Record<Position, number> = { K: 0, V: 0, M: 0, A: 0 };
-      let matchTurns = 0;
-      for (const t of turns) {
-        for (const a of t.positions) {
-          if (a.playerId !== p.id) continue;
-          matchTurns += 1;
-          positions[a.position] += 1;
-        }
-      }
-      return {
-        player: p,
-        matchTurns,
-        positions,
-        onField: fieldIds.has(p.id),
-        onFieldPosition: fieldPosById.get(p.id) ?? null,
-      };
-    })
-    .sort((a, b) => a.matchTurns - b.matchTurns || a.player.name.localeCompare(b.player.name));
+  // Vervang de huidige (laatste) beurt tijdelijk door displayedPositions zodat
+  // tellingen kloppen tijdens een pending swap correctie.
+  const liveMatch: Match = {
+    ...match.value,
+    turns: match.value.turns.map((t, i, arr) =>
+      i === arr.length - 1 ? { ...t, positions: displayedPositions.value } : t,
+    ),
+  };
+  return computeMatchStats(liveMatch, players.value).map((row) => ({
+    player: row.player,
+    matchTurns: row.matchTurns,
+    positions: row.positions,
+    onField: row.player.id !== undefined && fieldIds.has(row.player.id),
+    onFieldPosition: row.player.id !== undefined ? (fieldPosById.get(row.player.id) ?? null) : null,
+  }));
 });
 
 const totalStats = computed(() => computeAllStats(players.value, allMatches.value));
+
+/** Map<playerId, { matchTurns, keeperTurns }> voor compacte badges op veld + bank. */
+const statsByPlayer = computed(() => {
+  const map = new Map<number, { matchTurns: number; keeperTurns: number }>();
+  for (const row of matchStats.value) {
+    if (row.player.id === undefined) continue;
+    map.set(row.player.id, { matchTurns: row.matchTurns, keeperTurns: row.positions.K });
+  }
+  return map;
+});
 
 // ---- End match ------------------------------------------------------------
 const canEnd = computed(() => match.value !== null && match.value.status !== 'finished');
@@ -381,8 +428,24 @@ async function endMatch() {
   stopwatch.pause();
   await closeCurrentTurn();
   await persist({ status: 'finished' });
-  periodEndPrompt.value = false;
 }
+
+// ---- Datum bewerken ------------------------------------------------------
+function toIsoDate(d: Date | string): string {
+  const date = d instanceof Date ? d : new Date(d);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+const dateInput = computed({
+  get: () => (match.value ? toIsoDate(match.value.date) : ''),
+  set: (value: string) => {
+    if (!value || !matchId.value) return;
+    const newDate = new Date(`${value}T12:00:00`);
+    if (Number.isNaN(newDate.getTime())) return;
+    void matchesRepo.update(matchId.value, { date: newDate });
+  },
+});
 
 // ---- Persist helper -------------------------------------------------------
 async function persist(patch: Partial<Omit<Match, 'id'>>) {
@@ -402,9 +465,23 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       <RouterLink to="/matches" class="back">← Terug</RouterLink>
       <div class="title">
         <div class="opp">vs {{ match.opponent }}</div>
-        <div class="sub">{{ match.type }}v{{ match.type }}</div>
+        <div class="sub">
+          {{ match.type }}v{{ match.type }}
+          <input
+            type="date"
+            class="date-input"
+            :value="dateInput"
+            @change="dateInput = ($event.target as HTMLInputElement).value"
+            aria-label="Wedstrijddatum"
+          />
+        </div>
       </div>
-      <div class="score" aria-label="Eigen doelpunten">{{ ownScore }}</div>
+      <div class="score-block">
+        <div class="score" aria-label="Stand">{{ ownScore }} - {{ opponentScore }}</div>
+        <div class="swaps" :aria-label="`${swapCount} wisselbeurten`" title="Aantal geregistreerde wisselbeurten">
+          🔁 {{ swapCount }}
+        </div>
+      </div>
     </header>
 
     <Stopwatch
@@ -415,23 +492,11 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       @start="onStart"
       @pause="onPause"
       @reset="onReset"
+      @finish-period="handlePeriodEnd"
     />
 
-    <div v-if="periodEndPrompt" class="prompt">
-      <p>
-        Periode {{ match.currentPeriod }} is afgelopen.
-      </p>
-      <div class="prompt-actions">
-        <button v-if="match.currentPeriod < totalPeriods" class="primary" @click="nextPeriod">
-          Volgende periode
-        </button>
-        <button class="warn" @click="endMatch">Beëindig wedstrijd</button>
-        <button @click="periodEndPrompt = false">Sluiten</button>
-      </div>
-    </div>
-
     <div v-if="match.status === 'finished'" class="finished">
-      Wedstrijd is afgesloten. Eindscore: <strong>{{ ownScore }}</strong>.
+      Wedstrijd is afgesloten. Eindscore: <strong>{{ ownScore }} - {{ opponentScore }}</strong>.
     </div>
 
     <Field
@@ -439,6 +504,7 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       :formation="formation"
       :positions="displayedPositions"
       :players="players"
+      :stats-by-player="statsByPlayer"
       @update:positions="onPositionsUpdate"
       @pick-slot="onPickSlot"
     />
@@ -448,18 +514,21 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
 
     <div v-if="hasPendingSwap" class="swap-confirm">
       <p class="swap-msg">
-        Wissel voorgesteld. Bevestig om dit als nieuwe beurt te tellen,
-        of herstel om de wissel niet mee te tellen.
+        Wissel voorgesteld. <strong>Bevestig</strong> om dit als nieuwe beurt te tellen,
+        <strong>Herstel</strong> om alleen de opstelling aan te passen zonder extra beurt,
+        of <strong>Annuleer</strong> om de wijziging te negeren.
       </p>
       <div class="swap-actions">
         <button class="primary" @click="confirmSwap">Bevestig wissel</button>
-        <button @click="revertSwap">Herstel</button>
+        <button @click="correctSwap">Herstel (correctie)</button>
+        <button class="ghost" @click="cancelSwap">Annuleer</button>
       </div>
     </div>
 
     <Bench
       v-if="currentTurn"
       :players="benchPlayers"
+      :stats-by-player="statsByPlayer"
       @update:players="onBenchUpdate"
     />
 
@@ -469,6 +538,7 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       :can-end="canEnd"
       @goal="onGoal"
       @assist="onAssist"
+      @opponent-goal="onOpponentGoal"
       @stats="statsOpen = true"
       @end-match="endMatch"
     />
@@ -499,13 +569,14 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       <h3 class="stats-h">Totaal (alle wedstrijden)</h3>
       <table class="stats-table">
         <thead>
-          <tr><th>Speler</th><th>Beurten</th><th>Voorkeur</th><th>⚽</th><th>🅰️</th></tr>
+          <tr><th>Speler</th><th>Beurten</th><th>Voorkeur</th><th title="Keepersbeurten">🧤</th><th>⚽</th><th>🅰️</th></tr>
         </thead>
         <tbody>
           <tr v-for="p in players" :key="p.id">
             <td>{{ p.name }}</td>
             <td>{{ totalStats.get(p.id ?? -1)?.totalTurns ?? 0 }}</td>
             <td>{{ totalStats.get(p.id ?? -1)?.preferredPosTurns ?? 0 }}</td>
+            <td>{{ totalStats.get(p.id ?? -1)?.keeperTurns ?? 0 }}</td>
             <td>{{ totalStats.get(p.id ?? -1)?.goals ?? 0 }}</td>
             <td>{{ totalStats.get(p.id ?? -1)?.assists ?? 0 }}</td>
           </tr>
@@ -553,7 +624,7 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
 .match {
   max-width: 720px;
   margin: 0 auto;
-  padding: 0.75rem;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -580,10 +651,33 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
 .title .sub {
   color: var(--color-muted);
   font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.date-input {
+  font-size: 0.85rem;
+  padding: 0.1rem 0.25rem;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+.score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
 }
 .score {
   font-size: 1.8rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.swaps {
+  font-size: 0.85rem;
+  color: var(--color-muted);
   font-variant-numeric: tabular-nums;
 }
 .prompt {

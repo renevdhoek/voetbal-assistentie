@@ -34,7 +34,7 @@ Het datamodel volgt het principe **single source of truth**: alle statistieken w
 export type Position = 'K' | 'V' | 'M' | 'A';
 export type MatchType = 6 | 7 | 11;
 export type MatchStatus = 'planned' | 'running' | 'paused' | 'finished';
-export type EventType = 'goal' | 'assist';
+export type EventType = 'goal' | 'assist' | 'opponentGoal';
 
 // Singleton (id = 1) met competitie-brede instellingen.
 export interface Settings {
@@ -64,7 +64,7 @@ export interface Turn {
 
 export interface MatchEvent {
   type: EventType;
-  playerId: number;
+  playerId?: number;               // afwezig voor 'opponentGoal'
   turnIndex: number;               // index in Match.turns op moment van registratie
 }
 
@@ -169,7 +169,7 @@ Dit scherm is geoptimaliseerd voor gebruik langs de lijn en bevat:
    * Impliciet: alle spelers die niet in `Turn.positions` staan (bij een pending
      wissel toont de bank de concept-opstelling).
 4. **Actiebalk (Sticky Bottom)**
-   * **⚽ Doelpunt:** modal met spelers in het veld → registreert `MatchEvent('goal')`.
+   * **⚽ Doelpunt:** modal met spelers in het veld + extra knop “🟥 Tegenstander” → registreert `MatchEvent('goal')` of `MatchEvent('opponentGoal')`. De score wordt getoond als `eigen - tegenstander`.
    * **🅰️ Assist:** idem voor `'assist'`.
    * **📊 Stats:** opent het statistiekenscherm.
    * **🏁 Einde:** sluit de huidige beurt af en zet de wedstrijd op `finished`.

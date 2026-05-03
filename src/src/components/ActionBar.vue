@@ -11,6 +11,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   goal: [playerId: number];
   assist: [playerId: number];
+  opponentGoal: [];
   endMatch: [];
   stats: [];
 }>();
@@ -26,6 +27,11 @@ function pickPlayer(p: Player) {
   if (p.id === undefined || picking.value === null) return;
   if (picking.value === 'goal') emit('goal', p.id);
   else emit('assist', p.id);
+  picking.value = null;
+}
+
+function pickOpponent() {
+  emit('opponentGoal');
   picking.value = null;
 }
 </script>
@@ -44,12 +50,17 @@ function pickPlayer(p: Player) {
     @close="picking = null"
   >
     <ul class="picker">
+      <li v-if="picking === 'goal'">
+        <button class="pick opponent" @click="pickOpponent">
+          🟥 Tegenstander
+        </button>
+      </li>
       <li v-for="p in props.fieldPlayers" :key="p.id">
         <button class="pick" @click="pickPlayer(p)">
           {{ p.name }}
         </button>
       </li>
-      <li v-if="props.fieldPlayers.length === 0" class="muted">
+      <li v-if="props.fieldPlayers.length === 0 && picking !== 'goal'" class="muted">
         Geen spelers in het veld.
       </li>
     </ul>
@@ -62,13 +73,13 @@ function pickPlayer(p: Player) {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr) auto;
-  gap: 0.4rem;
-  padding: 0.6rem;
+  gap: 0.3rem;
+  padding: 0.4rem;
   background: #1f2937;
   border-top: 1px solid #000;
 }
 .actionbar button {
-  min-height: 56px;
+  min-height: 44px;
   font-weight: 700;
   border: none;
   color: #fff;
@@ -97,6 +108,11 @@ function pickPlayer(p: Player) {
   width: 100%;
   text-align: left;
   font-size: 1rem;
+}
+.pick.opponent {
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 700;
 }
 .muted {
   color: var(--color-muted);

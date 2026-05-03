@@ -11,7 +11,7 @@ defineProps<{ title: string }>();
 
 <style scoped>
 .view {
-  padding: 1rem;
+  padding: 0.5rem;
 }
 .placeholder {
   color: var(--muted, #666);

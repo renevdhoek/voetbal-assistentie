@@ -43,8 +43,8 @@ const display = computed(() => `P${props.currentPeriod} ${formatClock(props.elap
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 0.5rem 1rem;
-  padding: 0.75rem 1rem;
+  gap: 0.35rem 0.75rem;
+  padding: 0.4rem 0.75rem;
   background: #111827;
   color: #fff;
   border-radius: 8px;

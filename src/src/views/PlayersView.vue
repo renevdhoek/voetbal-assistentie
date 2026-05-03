@@ -145,7 +145,7 @@ const statsRows = computed(() =>
 
 <style scoped>
 .view {
-  padding: 1rem;
+  padding: 0.5rem;
   max-width: 720px;
 }
 .head {

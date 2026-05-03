@@ -23,8 +23,8 @@ import { RouterLink, RouterView } from 'vue-router';
 }
 .topnav {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  gap: 0.25rem;
+  padding: 0.25rem 0.4rem;
   background: #1f2937;
   position: sticky;
   top: 0;
@@ -33,8 +33,8 @@ import { RouterLink, RouterView } from 'vue-router';
 .topnav a {
   color: #fff;
   text-decoration: none;
-  padding: 0.75rem 1rem;
-  min-height: 48px;
+  padding: 0.4rem 0.75rem;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   border-radius: 6px;
