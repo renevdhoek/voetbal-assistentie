@@ -60,7 +60,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 
 ## Fase 2 — Spelerbeheer & Settings
 
-### Stap 2.1 — Settings-view 🔲
+### Stap 2.1 — Settings-view ✅
 **Doel:** Coach kan periodes en defaults instellen.
 **Acties:**
 - `SettingsView.vue` met form: `periods` (radio 2/4), `periodLengthMin` (number), `defaultMatchType` (select 6/7/11).
@@ -69,7 +69,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** waarden persisteren na page-reload.
 **Review:** validaties (positieve duur), UI gebruikt 48px+ targets.
 
-### Stap 2.2 — Spelerbeheer-view 🔲
+### Stap 2.2 — Spelerbeheer-view ✅
 **Doel:** CRUD voor spelers met voorkeursposities.
 **Acties:**
 - `PlayersView.vue`: lijst + "Toevoegen" dialog.
@@ -79,7 +79,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** spelers kunnen worden aangemaakt/bewerkt/verwijderd; data overleeft reload.
 **Review:** max-3-validatie werkt, lijst sorteert op nummer.
 
-### Stap 2.3 — Stats-library + dashboard 🔲
+### Stap 2.3 — Stats-library + dashboard ✅
 **Doel:** Afgeleide statistieken zichtbaar per speler.
 **Acties:**
 - `lib/stats.ts`: `computePlayerStats(player, matches, players)` → `{goals, assists, totalTurns, preferredPosTurns}`. Pure functie.
