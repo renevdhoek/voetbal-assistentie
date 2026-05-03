@@ -41,6 +41,11 @@ async function onDelete(player: Player) {
   await remove(player.id);
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
+}
+
 const stats = computed(() => computeAllStats(players.value, matches.value));
 const statsRows = computed(() =>
   players.value.map((p) => ({
@@ -83,7 +88,7 @@ const statsRows = computed(() =>
 
     <ul v-else-if="tab === 'list'" class="players">
       <li v-for="p in players" :key="p.id" class="row">
-        <div class="num">{{ p.number }}</div>
+        <div class="avatar" aria-hidden="true">{{ initials(p.name) }}</div>
         <div class="info">
           <div class="name">{{ p.name }}</div>
           <div class="prefs">
@@ -101,7 +106,6 @@ const statsRows = computed(() =>
     <table v-else class="stats">
       <thead>
         <tr>
-          <th>Nr</th>
           <th>Naam</th>
           <th title="Doelpunten">G</th>
           <th title="Assists">A</th>
@@ -111,7 +115,6 @@ const statsRows = computed(() =>
       </thead>
       <tbody>
         <tr v-for="row in statsRows" :key="row.player.id">
-          <td>{{ row.player.number }}</td>
           <td>{{ row.player.name }}</td>
           <td>{{ row.stats.goals }}</td>
           <td>{{ row.stats.assists }}</td>
@@ -133,7 +136,6 @@ const statsRows = computed(() =>
     >
       <PlayerForm
         :initial="editing ?? undefined"
-        :others="players"
         @submit="onSubmit"
         @cancel="isFormOpen = false"
       />
@@ -188,7 +190,7 @@ const statsRows = computed(() =>
   border: 1px solid var(--color-border);
   border-radius: 8px;
 }
-.num {
+.avatar {
   width: 48px;
   height: 48px;
   border-radius: 24px;
@@ -197,7 +199,7 @@ const statsRows = computed(() =>
   font-weight: 700;
   display: grid;
   place-items: center;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 .info {
   min-width: 0;

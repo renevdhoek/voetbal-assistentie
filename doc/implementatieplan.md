@@ -73,11 +73,10 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Doel:** CRUD voor spelers met voorkeursposities.
 **Acties:**
 - `PlayersView.vue`: lijst + "Toevoegen" dialog.
-- Form: naam (string), nummer (int), preferences (4 toggle-chips K/V/M/A, max 3).
-- Dubbel-nummer detectie → niet-blokkerende waarschuwing.
+- Form: naam (string), preferences (4 toggle-chips K/V/M/A, max 3).
 - Edit + delete acties per rij.
 **Deliverable:** spelers kunnen worden aangemaakt/bewerkt/verwijderd; data overleeft reload.
-**Review:** max-3-validatie werkt, lijst sorteert op nummer.
+**Review:** max-3-validatie werkt, lijst sorteert op naam.
 
 ### Stap 2.3 — Stats-library + dashboard ✅
 **Doel:** Afgeleide statistieken zichtbaar per speler.

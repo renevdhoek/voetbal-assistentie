@@ -48,7 +48,6 @@ export interface Settings {
 export interface Player {
   id?: number;
   name: string;
-  number: number;
   preferences: Position[];   // 0..3 items
 }
 
@@ -92,13 +91,19 @@ Per `Player` worden de volgende waarden runtime berekend (zie `lib/stats.ts`):
 | `totalTurns` | aantal `Turn`s waarin `playerId` voorkomt in `positions` |
 | `preferredPosTurns` | idem, maar alleen wanneer `position ∈ player.preferences` |
 
-### 3.2 Dexie schema (v1)
+### 3.2 Dexie schema (v2)
 ```typescript
 db.version(1).stores({
   settings: '++id',
   players:  '++id, number',
   matches:  '++id, date, status'
 });
+// v2: rugnummer verwijderd; index op name.
+db.version(2).stores({
+  settings: '++id',
+  players:  '++id, name',
+  matches:  '++id, date, status'
+}).upgrade(tx => tx.table('players').toCollection().modify(p => { delete p.number; }));
 ```
 Toekomstige migraties via `db.version(n).upgrade(...)`.
 
@@ -107,8 +112,8 @@ Toekomstige migraties via `db.version(n).upgrade(...)`.
 ## 4. Functioneel Ontwerp
 
 ### 4.1 Spelerbeheer
-* Spelers aanmaken/bewerken/verwijderen met naam, rugnummer en max. 3 voorkeursposities (K, V, M, A).
-* Validatie: max. 3 voorkeuren; bij dubbel rugnummer een waarschuwing (niet blokkerend).
+* Spelers aanmaken/bewerken/verwijderen met naam en max. 3 voorkeursposities (K, V, M, A).
+* Validatie: max. 3 voorkeuren.
 * Dashboard met afgeleide statistieken per speler.
 
 ### 4.2 Settings

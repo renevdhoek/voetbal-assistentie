@@ -12,8 +12,6 @@ const POSITION_LABELS: Record<Position, string> = {
 
 const props = defineProps<{
   initial?: Player;
-  /** Existing players (for duplicate-number warning). */
-  others: Player[];
 }>();
 
 const emit = defineEmits<{
@@ -22,14 +20,12 @@ const emit = defineEmits<{
 }>();
 
 const name = ref('');
-const number = ref<number | null>(null);
 const preferences = ref<Position[]>([]);
 
 watch(
   () => props.initial,
   (p) => {
     name.value = p?.name ?? '';
-    number.value = p?.number ?? null;
     preferences.value = [...(p?.preferences ?? [])];
   },
   { immediate: true },
@@ -45,20 +41,12 @@ function togglePreference(pos: Position) {
   preferences.value.push(pos);
 }
 
-const isDuplicateNumber = computed(() => {
-  if (number.value === null) return false;
-  return props.others.some((p) => p.id !== props.initial?.id && p.number === number.value);
-});
-
-const canSubmit = computed(
-  () => name.value.trim().length > 0 && number.value !== null && Number.isInteger(number.value),
-);
+const canSubmit = computed(() => name.value.trim().length > 0);
 
 function submit() {
-  if (!canSubmit.value || number.value === null) return;
+  if (!canSubmit.value) return;
   emit('submit', {
     name: name.value.trim(),
-    number: number.value,
     preferences: [...preferences.value],
   });
 }
@@ -69,14 +57,6 @@ function submit() {
     <label class="field">
       <span>Naam</span>
       <input v-model="name" type="text" required autofocus />
-    </label>
-
-    <label class="field">
-      <span>Rugnummer</span>
-      <input v-model.number="number" type="number" min="1" max="999" required />
-      <small v-if="isDuplicateNumber" class="warn">
-        Let op: dit nummer is al in gebruik.
-      </small>
     </label>
 
     <fieldset class="prefs">
@@ -117,10 +97,6 @@ function submit() {
   flex-direction: column;
   gap: 0.25rem;
   font-weight: 500;
-}
-.warn {
-  color: #b45309;
-  font-weight: 400;
 }
 .prefs {
   border: 1px solid var(--color-border);

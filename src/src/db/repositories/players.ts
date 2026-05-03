@@ -2,7 +2,7 @@ import { db } from '../database';
 import type { Player } from '../../types/domain';
 
 export function list(): Promise<Player[]> {
-  return db.players.orderBy('number').toArray();
+  return db.players.orderBy('name').toArray();
 }
 
 export function get(id: number): Promise<Player | undefined> {

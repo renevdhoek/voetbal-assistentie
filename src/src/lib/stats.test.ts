@@ -5,7 +5,6 @@ import type { Match, Player } from '../types/domain';
 const p = (id: number, name: string, prefs: Player['preferences'] = []): Player => ({
   id,
   name,
-  number: id,
   preferences: prefs,
 });
 
@@ -28,7 +27,7 @@ describe('computePlayerStats', () => {
   });
 
   it('returns zero stats when player has no id', () => {
-    const player: Player = { name: 'X', number: 9, preferences: [] };
+    const player: Player = { name: 'X', preferences: [] };
     expect(computePlayerStats(player, [match()])).toEqual({ ...ZERO_STATS });
   });
 

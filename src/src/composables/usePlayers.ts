@@ -8,7 +8,7 @@ export function usePlayers() {
   const players = ref<Player[]>([]);
   const isLoading = ref(true);
 
-  const subscription = liveQuery(() => db.players.orderBy('number').toArray()).subscribe({
+  const subscription = liveQuery(() => db.players.orderBy('name').toArray()).subscribe({
     next: (value) => {
       players.value = value;
       isLoading.value = false;

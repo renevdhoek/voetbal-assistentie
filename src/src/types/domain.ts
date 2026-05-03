@@ -18,7 +18,6 @@ export interface Settings {
 export interface Player {
   id?: number;
   name: string;
-  number: number;
   preferences: Position[]; // 0..3
 }
 
