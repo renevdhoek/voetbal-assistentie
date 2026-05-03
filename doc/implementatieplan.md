@@ -63,7 +63,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 ### Stap 2.1 — Settings-view ✅
 **Doel:** Coach kan periodes en defaults instellen.
 **Acties:**
-- `SettingsView.vue` met form: `periods` (radio 2/4), `periodLengthMin` (number), `defaultMatchType` (select 6/7/11).
+- `SettingsView.vue` met form: `periods` (radio 2/4), `periodLengthMin` (number), `matchType` (select 6/7/11).
 - Wijzigingen → `settingsRepo.updateSettings()`.
 - `useSettings()` composable met reactive state (Dexie liveQuery).
 **Deliverable:** waarden persisteren na page-reload.
@@ -103,7 +103,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Doel:** Coach maakt nieuwe wedstrijd.
 **Acties:**
 - `MatchesView.vue`: lijst van matches (datum, tegenstander, status, score uit events).
-- Dialog "Nieuwe wedstrijd": tegenstander, datum (default vandaag), type (default uit Settings).
+- Dialog "Nieuwe wedstrijd": tegenstander, datum (default vandaag). Speelvorm wordt overgenomen uit `Settings.matchType` (geen UI-keuze).
 - Bij aanmaken: `status:'planned'`, `currentPeriod:1`, `elapsedSeconds:0`, `turns:[]`, `events:[]`.
 **Deliverable:** wedstrijd verschijnt in lijst.
 **Review:** correcte defaults, datum-input bruikbaar op mobiel.

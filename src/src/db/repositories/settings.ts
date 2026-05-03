@@ -5,7 +5,7 @@ const DEFAULTS: Settings = {
   id: 1,
   periods: 2,
   periodLengthMin: 25,
-  defaultMatchType: 7,
+  matchType: 7,
   schemaVersion: SCHEMA_VERSION,
 };
 

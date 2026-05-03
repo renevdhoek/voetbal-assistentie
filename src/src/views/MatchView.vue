@@ -8,6 +8,7 @@ import Stopwatch from '../components/Stopwatch.vue';
 import Field from '../components/Field.vue';
 import Bench from '../components/Bench.vue';
 import ActionBar from '../components/ActionBar.vue';
+import Modal from '../components/Modal.vue';
 
 import { db } from '../db/database';
 import * as matchesRepo from '../db/repositories/matches';
@@ -19,7 +20,7 @@ import { getFormation } from '../lib/formations';
 import { suggestFormation } from '../lib/suggester';
 import { computeAllStats, ZERO_STATS } from '../lib/stats';
 import { computeOwnScore } from '../lib/matchDisplay';
-import type { Match, MatchEvent, PositionAssignment, Turn } from '../types/domain';
+import type { Match, MatchEvent, Player, PositionAssignment, Position, Turn } from '../types/domain';
 
 const route = useRoute();
 const router = useRouter();
@@ -76,6 +77,27 @@ watch(
   (val) => {
     if (val !== undefined) stopwatch.setElapsed(val);
   },
+);
+
+// Auto-initialiseer een eerste opstelling zodra een geplande wedstrijd wordt
+// geopend (en spelers + settings geladen zijn). Coach kan voor de start nog
+// schuiven via drag & drop of via tap-picker.
+let didInitTurn = false;
+watch(
+  [match, players, settings],
+  async () => {
+    if (didInitTurn) return;
+    if (!match.value || !settings.value) return;
+    if (match.value.turns.length > 0) {
+      didInitTurn = true;
+      return;
+    }
+    if (match.value.status !== 'planned') return;
+    if (players.value.length < formation.value.length) return;
+    didInitTurn = true;
+    await initialiseFirstTurn();
+  },
+  { immediate: true },
 );
 
 async function onStart() {
@@ -152,6 +174,71 @@ async function onPositionsUpdate(positions: PositionAssignment[]) {
   await persist({ turns });
 }
 
+// ---- Tap-to-pick selectie -------------------------------------------------
+interface PickContext {
+  position: Position;
+  /** Index in zone.players (0-based, binnen zelfde positie). */
+  zoneIndex: number;
+  /** Speler-id die nu in dit slot staat (voor "Maak leeg"). */
+  currentPlayerId: number | null;
+}
+
+const pickContext = ref<PickContext | null>(null);
+
+function onPickSlot(ctx: PickContext) {
+  pickContext.value = ctx;
+}
+
+const pickCandidates = computed<Array<{ player: Player; currentPosition: Position | null }>>(() => {
+  if (!pickContext.value || !currentTurn.value) return [];
+  const ctx = pickContext.value;
+  const posByPlayer = new Map<number, Position>();
+  for (const a of currentTurn.value.positions) posByPlayer.set(a.playerId, a.position);
+
+  return players.value
+    .filter((p) => p.id !== undefined && p.id !== ctx.currentPlayerId)
+    .map((p) => ({ player: p, currentPosition: posByPlayer.get(p.id!) ?? null }));
+});
+
+async function applyPick(playerId: number | null) {
+  if (!match.value || !currentTurn.value || !pickContext.value) return;
+  const ctx = pickContext.value;
+  const positions = currentTurn.value.positions.map((a) => ({ ...a }));
+
+  // Verwijder oude bezetting van dit slot.
+  if (ctx.currentPlayerId !== null) {
+    const idx = positions.findIndex(
+      (p) => p.playerId === ctx.currentPlayerId && p.position === ctx.position,
+    );
+    if (idx >= 0) positions.splice(idx, 1);
+  }
+
+  if (playerId !== null) {
+    // Als de gekozen speler al ergens anders stond: swap door de oude bewoner
+    // van dit slot terug te zetten op de oorspronkelijke positie van de keuze.
+    const prevIdx = positions.findIndex((p) => p.playerId === playerId);
+    let swappedFrom: Position | null = null;
+    if (prevIdx >= 0) {
+      swappedFrom = positions[prevIdx].position;
+      positions.splice(prevIdx, 1);
+    }
+    positions.push({ playerId, position: ctx.position });
+    if (swappedFrom !== null && ctx.currentPlayerId !== null) {
+      positions.push({ playerId: ctx.currentPlayerId, position: swappedFrom });
+    }
+  }
+
+  pickContext.value = null;
+  await onPositionsUpdate(positions);
+}
+
+const positionLabels: Record<Position, string> = {
+  K: 'Keeper',
+  V: 'Verdediging',
+  M: 'Middenveld',
+  A: 'Aanval',
+};
+
 async function onBenchUpdate(_value: unknown) {
   // Bench-mutaties zijn impliciet: spelers verschijnen vanzelf zodra ze niet meer
   // in `currentTurn.positions` zitten. We hoeven hier niets te doen — de drag-drop
@@ -210,7 +297,11 @@ async function endMatch() {
 // ---- Persist helper -------------------------------------------------------
 async function persist(patch: Partial<Omit<Match, 'id'>>) {
   if (matchId.value && Number.isFinite(matchId.value)) {
-    await matchesRepo.update(matchId.value, patch);
+    // Vue reactive proxies kunnen niet door structured-clone (IndexedDB).
+    // Maak een diepe plain-JS kopie voordat we persisteren. (Geen Date-velden
+    // in deze patches, dus JSON-roundtrip is veilig.)
+    const raw = JSON.parse(JSON.stringify(patch)) as Partial<Omit<Match, 'id'>>;
+    await matchesRepo.update(matchId.value, raw);
   }
 }
 </script>
@@ -259,8 +350,11 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       :positions="currentTurn.positions"
       :players="players"
       @update:positions="onPositionsUpdate"
+      @pick-slot="onPickSlot"
     />
-    <p v-else class="muted">Druk op Start om de wedstrijd te beginnen — opstelling wordt automatisch gesuggereerd.</p>
+    <p v-else class="muted">
+      Voeg minimaal {{ formation.length }} spelers toe via <RouterLink to="/players">Spelers</RouterLink> om een opstelling te kunnen maken.
+    </p>
 
     <Bench
       v-if="currentTurn"
@@ -277,6 +371,35 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       @next-turn="onNextTurn"
       @end-match="endMatch"
     />
+
+    <Modal
+      :open="pickContext !== null"
+      :title="pickContext ? `Speler kiezen — ${positionLabels[pickContext.position]}` : ''"
+      @close="pickContext = null"
+    >
+      <ul v-if="pickContext" class="pick-list">
+        <li v-if="pickContext.currentPlayerId !== null">
+          <button class="pick clear" @click="applyPick(null)">Slot leegmaken</button>
+        </li>
+        <li v-for="c in pickCandidates" :key="c.player.id">
+          <button
+            class="pick"
+            :class="{ pref: c.player.preferences.includes(pickContext.position) }"
+            @click="applyPick(c.player.id!)"
+          >
+            <span class="pname">{{ c.player.name }}</span>
+            <span class="meta">
+              <span v-if="c.currentPosition" class="loc">nu: {{ c.currentPosition }}</span>
+              <span v-else class="loc bench">bank</span>
+              <span v-if="c.player.preferences.includes(pickContext.position)" class="badge">voorkeur</span>
+            </span>
+          </button>
+        </li>
+        <li v-if="pickCandidates.length === 0 && pickContext.currentPlayerId === null" class="muted">
+          Geen spelers beschikbaar.
+        </li>
+      </ul>
+    </Modal>
   </section>
 
   <section v-else-if="!match" class="loading">
@@ -357,5 +480,55 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
 .loading {
   padding: 2rem;
   text-align: center;
+}
+.pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.pick {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  font-size: 1rem;
+}
+.pick.pref {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+.pick.clear {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+  font-weight: 600;
+}
+.badge {
+  font-size: 0.75rem;
+  background: #16a34a;
+  color: #fff;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.loc {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-weight: 600;
+}
+.loc.bench {
+  background: #f3f4f6;
+  color: var(--color-muted);
 }
 </style>

@@ -6,7 +6,7 @@ import MatchForm from '../components/MatchForm.vue';
 import { useMatches } from '../composables/useMatches';
 import { useSettings } from '../composables/useSettings';
 import { computeOwnScore, formatMatchDate, statusLabel } from '../lib/matchDisplay';
-import type { Match, MatchType } from '../types/domain';
+import type { Match } from '../types/domain';
 
 const { matches, isLoading, add, remove } = useMatches();
 const { settings } = useSettings();
@@ -17,11 +17,12 @@ function openCreate() {
   isFormOpen.value = true;
 }
 
-async function onSubmit(data: { opponent: string; date: Date; type: MatchType }) {
+async function onSubmit(data: { opponent: string; date: Date }) {
+  if (!settings.value) return;
   const newMatch: Omit<Match, 'id'> = {
     opponent: data.opponent,
     date: data.date,
-    type: data.type,
+    type: settings.value.matchType,
     status: 'planned',
     currentPeriod: 1,
     elapsedSeconds: 0,
@@ -75,7 +76,7 @@ async function onDelete(match: Match) {
     <Modal :open="isFormOpen" title="Nieuwe wedstrijd" @close="isFormOpen = false">
       <MatchForm
         v-if="settings"
-        :default-match-type="settings.defaultMatchType"
+        :match-type="settings.matchType"
         @submit="onSubmit"
         @cancel="isFormOpen = false"
       />

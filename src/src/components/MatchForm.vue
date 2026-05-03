@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive } from 'vue';
 import type { MatchType } from '../types/domain';
 
 const props = defineProps<{
-  defaultMatchType: MatchType;
+  matchType: MatchType;
 }>();
 
 const emit = defineEmits<{
-  submit: [value: { opponent: string; date: Date; type: MatchType }];
+  submit: [value: { opponent: string; date: Date }];
   cancel: [];
 }>();
 
@@ -20,15 +20,7 @@ function todayIso(): string {
 const form = reactive({
   opponent: '',
   date: todayIso(),
-  type: props.defaultMatchType,
 });
-
-watch(
-  () => props.defaultMatchType,
-  (next) => {
-    form.type = next;
-  },
-);
 
 const isValid = computed(() => form.opponent.trim().length > 0 && !!form.date);
 
@@ -37,7 +29,6 @@ function onSubmit() {
   emit('submit', {
     opponent: form.opponent.trim(),
     date: new Date(`${form.date}T12:00:00`),
-    type: form.type,
   });
 }
 </script>
@@ -54,14 +45,7 @@ function onSubmit() {
       <input v-model="form.date" type="date" required />
     </label>
 
-    <label>
-      <span>Type</span>
-      <select v-model.number="form.type">
-        <option :value="6">6v6</option>
-        <option :value="7">7v7</option>
-        <option :value="11">11v11</option>
-      </select>
-    </label>
+    <p class="info">Speelvorm: <strong>{{ props.matchType }}v{{ props.matchType }}</strong> (uit instellingen)</p>
 
     <div class="actions">
       <button type="button" @click="emit('cancel')">Annuleren</button>
@@ -84,6 +68,14 @@ label {
 label span {
   font-weight: 600;
   font-size: 0.9rem;
+}
+.info {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--color-muted);
 }
 .actions {
   display: flex;

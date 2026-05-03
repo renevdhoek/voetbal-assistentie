@@ -11,6 +11,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:positions': [value: PositionAssignment[]];
+  'pick-slot': [
+    ctx: { position: Position; zoneIndex: number; currentPlayerId: number | null },
+  ];
 }>();
 
 const playerById = computed(() => {
@@ -46,35 +49,37 @@ const zones = computed<ZoneModel[]>(() => {
   return result.filter((z) => z.capacity > 0);
 });
 
-function zonePlayers(zone: ZoneModel): Array<Player | null> {
-  return zone.players;
+function filledPlayers(zone: ZoneModel): Player[] {
+  return zone.players.filter((p): p is Player => p !== null);
+}
+
+function emptyCount(zone: ZoneModel): number {
+  return zone.capacity - filledPlayers(zone).length;
 }
 
 function isPreferred(player: Player | null, position: Position): boolean {
   return !!player && player.preferences.includes(position);
 }
 
-function onZoneUpdate(zone: ZoneModel, newList: Array<Player | null>) {
+function onZoneUpdate(zone: ZoneModel, newList: Player[]) {
   const slotCount = zone.capacity;
-  // Verwijder eventuele duplicates binnen deze zone (bv. bij swap).
+  // Dedup binnen deze zone (bij swap).
   const seen = new Set<number>();
-  const cleaned: Array<Player | null> = [];
+  const cleaned: Player[] = [];
   for (const p of newList) {
-    if (p && p.id !== undefined) {
-      if (seen.has(p.id)) continue;
-      seen.add(p.id);
-    }
+    if (p?.id === undefined) continue;
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
     cleaned.push(p);
+    if (cleaned.length >= slotCount) break;
   }
-  while (cleaned.length < slotCount) cleaned.push(null);
-  cleaned.length = slotCount;
 
   // Bouw nieuwe assignments: behoud andere zones zoals ze nu zijn.
   const newAssignments: PositionAssignment[] = [];
   for (const z of zones.value) {
-    const list = z.position === zone.position ? cleaned : z.players;
+    const list = z.position === zone.position ? cleaned : filledPlayers(z);
     list.forEach((pl) => {
-      if (pl?.id !== undefined) newAssignments.push({ playerId: pl.id, position: z.position });
+      if (pl.id !== undefined) newAssignments.push({ playerId: pl.id, position: z.position });
     });
   }
   emit('update:positions', dedupe(newAssignments));
@@ -97,31 +102,47 @@ const positionLabels: Record<Position, string> = {
 
 <template>
   <div class="field">
+    <p class="hint">Tik op een speler of een leeg vakje om te wisselen. Slepen kan ook.</p>
     <div v-for="zone in zones" :key="zone.position" class="zone" :data-pos="zone.position">
       <div class="zone-label">{{ positionLabels[zone.position] }} ({{ zone.capacity }})</div>
-      <VueDraggable
-        :model-value="zonePlayers(zone)"
-        :group="{ name: 'players' }"
-        :animation="150"
-        item-key="id"
-        class="slots"
-        @update:model-value="(val: Array<Player | null>) => onZoneUpdate(zone, val)"
-      >
-        <template #item="{ element }: { element: Player | null }">
-          <div
-            class="slot"
-            :class="{ filled: !!element, preferred: isPreferred(element, zone.position) }"
+      <div class="slots">
+        <VueDraggable
+          :model-value="filledPlayers(zone)"
+          :group="{ name: 'players' }"
+          :animation="150"
+          class="filled-list"
+          @update:model-value="(val: Player[]) => onZoneUpdate(zone, val)"
+        >
+          <button
+            v-for="element in filledPlayers(zone)"
+            :key="element.id"
+            type="button"
+            class="slot filled"
+            :class="{ preferred: isPreferred(element, zone.position) }"
+            @click="emit('pick-slot', {
+              position: zone.position,
+              zoneIndex: 0,
+              currentPlayerId: element.id ?? null,
+            })"
           >
-            <template v-if="element">
-              <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
-              <div class="pname">{{ element.name }}</div>
-            </template>
-            <template v-else>
-              <div class="empty-slot">{{ zone.position }}</div>
-            </template>
-          </div>
-        </template>
-      </VueDraggable>
+            <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
+            <div class="pname">{{ element.name }}</div>
+          </button>
+        </VueDraggable>
+        <button
+          v-for="i in emptyCount(zone)"
+          :key="`empty-${zone.position}-${i}`"
+          type="button"
+          class="slot empty"
+          @click="emit('pick-slot', {
+            position: zone.position,
+            zoneIndex: filledPlayers(zone).length + (i - 1),
+            currentPlayerId: null,
+          })"
+        >
+          <div class="empty-slot">+ {{ zone.position }}</div>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -141,6 +162,12 @@ const positionLabels: Record<Position, string> = {
     #14532d 100%
   );
 }
+.hint {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+}
 .zone {
   background: rgba(255, 255, 255, 0.06);
   border-radius: 6px;
@@ -157,6 +184,10 @@ const positionLabels: Record<Position, string> = {
   flex-wrap: wrap;
   gap: 0.5rem;
   min-height: 64px;
+  align-items: stretch;
+}
+.filled-list {
+  display: contents;
 }
 .slot {
   flex: 1 1 80px;
@@ -171,12 +202,27 @@ const positionLabels: Record<Position, string> = {
   align-items: center;
   justify-content: center;
   text-align: center;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.slot.filled {
   cursor: grab;
 }
-.slot:not(.filled) {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.6);
-  border-color: rgba(255, 255, 255, 0.3);
+.slot:hover {
+  background: #f9fafb;
+}
+.slot.empty {
+  background: rgba(255, 255, 255, 0.85);
+  color: #14532d;
+  border-color: #14532d;
+  border-style: dashed;
+}
+.slot.empty:hover {
+  background: #fff;
+}
+.slot.empty .empty-slot {
+  color: #14532d;
 }
 .slot.preferred {
   border-color: #4ade80;

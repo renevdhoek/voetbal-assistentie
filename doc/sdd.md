@@ -41,7 +41,7 @@ export interface Settings {
   id?: number;
   periods: 2 | 4;            // 2 = helften, 4 = kwarten
   periodLengthMin: number;   // duur per periode in minuten
-  defaultMatchType: MatchType;
+  matchType: MatchType;
   schemaVersion: number;     // gebruikt door import/export
 }
 
@@ -104,6 +104,17 @@ db.version(2).stores({
   players:  '++id, name',
   matches:  '++id, date, status'
 }).upgrade(tx => tx.table('players').toCollection().modify(p => { delete p.number; }));
+// v3: Settings.defaultMatchType → matchType (speelvorm geldt voor hele competitie).
+db.version(3).stores({
+  settings: '++id',
+  players:  '++id, name',
+  matches:  '++id, date, status'
+}).upgrade(tx => tx.table('settings').toCollection().modify(s => {
+  if (s.defaultMatchType !== undefined && s.matchType === undefined) {
+    s.matchType = s.defaultMatchType;
+  }
+  delete s.defaultMatchType;
+}));
 ```
 Toekomstige migraties via `db.version(n).upgrade(...)`.
 
@@ -118,11 +129,16 @@ Toekomstige migraties via `db.version(n).upgrade(...)`.
 
 ### 4.2 Settings
 * Aantal periodes (2 of 4) en duur per periode.
-* Default speelvorm voor nieuwe wedstrijden.
+* Speelvorm (`matchType`: 6v6 / 7v7 / 11v11). Geldt voor alle wedstrijden in de competitie; per wedstrijd niet apart te kiezen.
 
 ### 4.3 Wedstrijd-setup
-* Nieuwe wedstrijd: tegenstander, datum, speelvorm (default uit `Settings`).
+* Nieuwe wedstrijd: tegenstander, datum. De speelvorm wordt overgenomen uit `Settings`.
 * Status start als `planned`; gaat naar `running` zodra de stopwatch start.
+* Bij openen van een `planned` wedstrijd wordt direct een eerste opstelling getoond
+  (initieel ingevuld door de suggester). De coach kan vóór de start spelers per
+  positie aanpassen via drag & drop óf via tap op een slot (tap opent een
+  speler-keuze-modal). De gekozen opstelling wordt gebruikt als startbeurt
+  zodra Start wordt ingedrukt.
 
 ### 4.4 Wedstrijdscherm (De Kern)
 Dit scherm is geoptimaliseerd voor gebruik langs de lijn en bevat:

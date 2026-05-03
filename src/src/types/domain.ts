@@ -11,7 +11,7 @@ export interface Settings {
   id?: number;
   periods: 2 | 4; // 2 = halves, 4 = quarters
   periodLengthMin: number;
-  defaultMatchType: MatchType;
+  matchType: MatchType;
   schemaVersion: number;
 }
 

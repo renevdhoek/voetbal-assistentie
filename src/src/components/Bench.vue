@@ -22,16 +22,17 @@ function onUpdate(value: Player[]) {
       :model-value="props.players"
       :group="{ name: 'players' }"
       :animation="150"
-      item-key="id"
       class="list"
       @update:model-value="onUpdate"
     >
-      <template #item="{ element }: { element: Player }">
-        <div class="chip">
-          <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
-          <div class="name">{{ element.name }}</div>
-        </div>
-      </template>
+      <div
+        v-for="element in props.players"
+        :key="element.id"
+        class="chip"
+      >
+        <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
+        <div class="name">{{ element.name }}</div>
+      </div>
     </VueDraggable>
     <p v-if="props.players.length === 0" class="muted small">Iedereen op het veld</p>
   </div>

@@ -17,9 +17,9 @@ const periodLengthMin = computed({
   },
 });
 
-const defaultMatchType = computed({
-  get: () => settings.value?.defaultMatchType ?? 7,
-  set: (v: MatchType) => void update({ defaultMatchType: v }),
+const matchType = computed({
+  get: () => settings.value?.matchType ?? 7,
+  set: (v: MatchType) => void update({ matchType: v }),
 });
 
 const savedFlash = ref(false);
@@ -59,8 +59,8 @@ watch(settings, () => {
       </label>
 
       <label class="field">
-        <span>Standaard speelvorm</span>
-        <select v-model.number="defaultMatchType">
+        <span>Speelvorm</span>
+        <select v-model.number="matchType">
           <option :value="6">6 tegen 6</option>
           <option :value="7">7 tegen 7</option>
           <option :value="11">11 tegen 11</option>

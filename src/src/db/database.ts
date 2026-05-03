@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Match, Player, Settings } from '../types/domain';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export class VoetbalDb extends Dexie {
   settings!: Table<Settings, number>;
@@ -25,6 +25,21 @@ export class VoetbalDb extends Dexie {
       .upgrade(async (tx) => {
         await tx.table('players').toCollection().modify((player: Record<string, unknown>) => {
           delete player.number;
+        });
+      });
+    // v3: Settings.defaultMatchType → matchType (speelvorm geldt voor hele competitie).
+    this.version(3)
+      .stores({
+        settings: '++id',
+        players: '++id, name',
+        matches: '++id, date, status',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('settings').toCollection().modify((s: Record<string, unknown>) => {
+          if (s.defaultMatchType !== undefined && s.matchType === undefined) {
+            s.matchType = s.defaultMatchType;
+          }
+          delete s.defaultMatchType;
         });
       });
   }
