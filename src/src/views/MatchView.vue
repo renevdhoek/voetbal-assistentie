@@ -13,7 +13,6 @@ import Modal from '../components/Modal.vue';
 import { db } from '../db/database';
 import * as matchesRepo from '../db/repositories/matches';
 import { usePlayers } from '../composables/usePlayers';
-import { useMatches } from '../composables/useMatches';
 import { useSettings } from '../composables/useSettings';
 import { useStopwatch } from '../composables/useStopwatch';
 
@@ -28,7 +27,6 @@ const router = useRouter();
 const matchId = computed(() => Number(route.params.id));
 
 const { players } = usePlayers();
-const { matches: allMatches } = useMatches();
 const { settings } = useSettings();
 
 const match = ref<Match | null>(null);
@@ -129,12 +127,6 @@ const periodEndPrompt = ref(false);
 function handlePeriodEnd() {
   void persist({ status: 'paused' });
   periodEndPrompt.value = true;
-}
-
-async function onFinishPeriod() {
-  if (!confirm(`Periode ${match.value?.currentPeriod ?? ''} afronden?`)) return;
-  stopwatch.pause();
-  handlePeriodEnd();
 }
 
 async function nextPeriod() {
@@ -291,54 +283,6 @@ async function onAssist(playerId: number) {
   await pushEvent({ type: 'assist', playerId, turnIndex: match.value.turns.length - 1 });
 }
 
-// ---- Statistieken ---------------------------------------------------------
-const statsOpen = ref(false);
-
-/** Beurten + posities van spelers binnen de huidige wedstrijd (live). */
-interface MatchPlayerStat {
-  player: Player;
-  matchTurns: number;
-  positions: Record<Position, number>;
-  onField: boolean;
-  onFieldPosition: Position | null;
-}
-
-const matchStats = computed<MatchPlayerStat[]>(() => {
-  const turns = match.value?.turns ?? [];
-  const fieldIds = new Set<number>();
-  const fieldPosById = new Map<number, Position>();
-  if (currentTurn.value) {
-    for (const a of currentTurn.value.positions) {
-      fieldIds.add(a.playerId);
-      fieldPosById.set(a.playerId, a.position);
-    }
-  }
-  return players.value
-    .filter((p): p is Player & { id: number } => p.id !== undefined)
-    .map((p) => {
-      const positions: Record<Position, number> = { K: 0, V: 0, M: 0, A: 0 };
-      let matchTurns = 0;
-      for (const t of turns) {
-        for (const a of t.positions) {
-          if (a.playerId !== p.id) continue;
-          matchTurns += 1;
-          positions[a.position] += 1;
-        }
-      }
-      return {
-        player: p,
-        matchTurns,
-        positions,
-        onField: fieldIds.has(p.id),
-        onFieldPosition: fieldPosById.get(p.id) ?? null,
-      };
-    })
-    .sort((a, b) => a.matchTurns - b.matchTurns || a.player.name.localeCompare(b.player.name));
-});
-
-/** Totaalstatistieken over alle wedstrijden (incl. huidige live updates). */
-const totalStats = computed(() => computeAllStats(players.value, allMatches.value));
-
 // ---- End match ------------------------------------------------------------
 const canEnd = computed(() => match.value !== null && match.value.status !== 'finished');
 
@@ -381,7 +325,6 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       @start="onStart"
       @pause="onPause"
       @reset="onReset"
-      @finish-period="onFinishPeriod"
     />
 
     <div v-if="periodEndPrompt" class="prompt">
@@ -427,7 +370,6 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
       @assist="onAssist"
       @next-turn="onNextTurn"
       @end-match="endMatch"
-      @stats="statsOpen = true"
     />
 
     <Modal
@@ -457,76 +399,6 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
           Geen spelers beschikbaar.
         </li>
       </ul>
-    </Modal>
-
-    <Modal :open="statsOpen" title="Statistieken" @close="statsOpen = false">
-      <div class="stats-modal">
-        <h3>Deze wedstrijd</h3>
-        <p class="muted small">
-          Beurten gespeeld in deze wedstrijd, gesorteerd op laagste belasting eerst.
-        </p>
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th>Speler</th>
-              <th title="Status">Nu</th>
-              <th title="Totaal beurten in deze wedstrijd">Beurten</th>
-              <th title="Beurten per positie K/V/M/A">K/V/M/A</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in matchStats" :key="row.player.id">
-              <td>{{ row.player.name }}</td>
-              <td>
-                <span v-if="row.onField" class="loc field-tag">
-                  {{ row.onFieldPosition }}
-                </span>
-                <span v-else class="loc bench">bank</span>
-              </td>
-              <td>{{ row.matchTurns }}</td>
-              <td class="pos-cell">
-                {{ row.positions.K }}/{{ row.positions.V }}/{{ row.positions.M }}/{{ row.positions.A }}
-              </td>
-            </tr>
-            <tr v-if="matchStats.length === 0">
-              <td colspan="4" class="muted">Geen spelers.</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Totaal (alle wedstrijden)</h3>
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th>Speler</th>
-              <th title="Doelpunten">G</th>
-              <th title="Assists">A</th>
-              <th title="Beurten totaal">Beurten</th>
-              <th title="Beurten op voorkeurspositie">Voorkeur</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in players" :key="p.id">
-              <td>{{ p.name }}</td>
-              <td>{{ (p.id !== undefined ? totalStats.get(p.id) : null)?.goals ?? ZERO_STATS.goals }}</td>
-              <td>{{ (p.id !== undefined ? totalStats.get(p.id) : null)?.assists ?? ZERO_STATS.assists }}</td>
-              <td>{{ (p.id !== undefined ? totalStats.get(p.id) : null)?.totalTurns ?? ZERO_STATS.totalTurns }}</td>
-              <td>
-                {{ (p.id !== undefined ? totalStats.get(p.id) : null)?.preferredPosTurns ?? 0 }}
-                <span
-                  v-if="(p.id !== undefined ? totalStats.get(p.id) : null)?.totalTurns"
-                  class="muted small"
-                >
-                  ({{ Math.round(
-                    ((totalStats.get(p.id!)?.preferredPosTurns ?? 0) /
-                      (totalStats.get(p.id!)?.totalTurns || 1)) * 100
-                  ) }}%)
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </Modal>
   </section>
 
@@ -658,46 +530,5 @@ async function persist(patch: Partial<Omit<Match, 'id'>>) {
 .loc.bench {
   background: #f3f4f6;
   color: var(--color-muted);
-}
-.stats-modal h3 {
-  margin: 0.5rem 0 0.25rem 0;
-  font-size: 1rem;
-}
-.stats-modal h3:first-child {
-  margin-top: 0;
-}
-.stats-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-.stats-table th,
-.stats-table td {
-  text-align: left;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #f3f4f6;
-}
-.stats-table th {
-  background: #f9fafb;
-  font-weight: 600;
-}
-.stats-table tr:last-child td {
-  border-bottom: none;
-}
-.field-tag {
-  background: #16a34a;
-  color: #fff;
-}
-.pos-cell {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
-}
-.small {
-  font-size: 0.85em;
 }
 </style>

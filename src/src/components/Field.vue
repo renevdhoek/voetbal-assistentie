@@ -110,24 +110,25 @@ const positionLabels: Record<Position, string> = {
           :model-value="filledPlayers(zone)"
           :group="{ name: 'players' }"
           :animation="150"
+          item-key="id"
           class="filled-list"
           @update:model-value="(val: Player[]) => onZoneUpdate(zone, val)"
         >
-          <button
-            v-for="element in filledPlayers(zone)"
-            :key="element.id"
-            type="button"
-            class="slot filled"
-            :class="{ preferred: isPreferred(element, zone.position) }"
-            @click="emit('pick-slot', {
-              position: zone.position,
-              zoneIndex: 0,
-              currentPlayerId: element.id ?? null,
-            })"
-          >
-            <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
-            <div class="pname">{{ element.name }}</div>
-          </button>
+          <template #item="{ element }: { element: Player }">
+            <button
+              type="button"
+              class="slot filled"
+              :class="{ preferred: isPreferred(element, zone.position) }"
+              @click="emit('pick-slot', {
+                position: zone.position,
+                zoneIndex: 0,
+                currentPlayerId: element.id ?? null,
+              })"
+            >
+              <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
+              <div class="pname">{{ element.name }}</div>
+            </button>
+          </template>
         </VueDraggable>
         <button
           v-for="i in emptyCount(zone)"
@@ -213,16 +214,13 @@ const positionLabels: Record<Position, string> = {
   background: #f9fafb;
 }
 .slot.empty {
-  background: rgba(255, 255, 255, 0.85);
-  color: #14532d;
-  border-color: #14532d;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.5);
   border-style: dashed;
 }
 .slot.empty:hover {
-  background: #fff;
-}
-.slot.empty .empty-slot {
-  color: #14532d;
+  background: rgba(255, 255, 255, 0.22);
 }
 .slot.preferred {
   border-color: #4ade80;
