@@ -11,7 +11,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   goal: [playerId: number];
   assist: [playerId: number];
-  nextTurn: [];
   endMatch: [];
   stats: [];
 }>();
@@ -36,7 +35,6 @@ function pickPlayer(p: Player) {
     <button class="goal" @click="open('goal')">⚽ Doelpunt</button>
     <button class="assist" @click="open('assist')">🅰️ Assist</button>
     <button class="stats" @click="emit('stats')">📊 Stats</button>
-    <button class="next" @click="emit('nextTurn')">🔄 Volgende</button>
     <button v-if="canEnd" class="end" @click="emit('endMatch')">🏁 Einde</button>
   </div>
 
@@ -63,7 +61,7 @@ function pickPlayer(p: Player) {
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr) auto;
+  grid-template-columns: repeat(3, 1fr) auto;
   gap: 0.4rem;
   padding: 0.6rem;
   background: #1f2937;
@@ -83,10 +81,6 @@ function pickPlayer(p: Player) {
 }
 .stats {
   background: #6366f1;
-}
-.next {
-  background: #f59e0b;
-  color: #111;
 }
 .end {
   background: #b91c1c;

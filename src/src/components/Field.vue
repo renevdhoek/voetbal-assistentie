@@ -110,25 +110,24 @@ const positionLabels: Record<Position, string> = {
           :model-value="filledPlayers(zone)"
           :group="{ name: 'players' }"
           :animation="150"
-          item-key="id"
           class="filled-list"
           @update:model-value="(val: Player[]) => onZoneUpdate(zone, val)"
         >
-          <template #item="{ element }: { element: Player }">
-            <button
-              type="button"
-              class="slot filled"
-              :class="{ preferred: isPreferred(element, zone.position) }"
-              @click="emit('pick-slot', {
-                position: zone.position,
-                zoneIndex: 0,
-                currentPlayerId: element.id ?? null,
-              })"
-            >
-              <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
-              <div class="pname">{{ element.name }}</div>
-            </button>
-          </template>
+          <button
+            v-for="element in filledPlayers(zone)"
+            :key="element.id"
+            type="button"
+            class="slot filled"
+            :class="{ preferred: isPreferred(element, zone.position) }"
+            @click="emit('pick-slot', {
+              position: zone.position,
+              zoneIndex: 0,
+              currentPlayerId: element.id ?? null,
+            })"
+          >
+            <div class="initials">{{ element.name.charAt(0).toUpperCase() }}</div>
+            <div class="pname">{{ element.name }}</div>
+          </button>
         </VueDraggable>
         <button
           v-for="i in emptyCount(zone)"

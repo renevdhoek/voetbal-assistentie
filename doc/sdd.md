@@ -155,12 +155,26 @@ Dit scherm is geoptimaliseerd voor gebruik langs de lijn en bevat:
      * **11v11:** 1xK, 4xV, 3xM, 3xA.
    * Spelers kunnen vanuit de bank naar een zone worden gesleept en onderling gewisseld.
    * Spelers op een voorkeurspositie krijgen een groene rand-highlight.
+   * **Wissel-bevestiging (alleen tijdens lopende/gepauzeerde wedstrijd):** zodra de
+     coach een speler op een ander slot zet (via tap-picker of drag & drop) wordt de
+     wijziging eerst als *concept-opstelling* getoond met een banner met twee acties:
+     * **Bevestig wissel:** sluit de huidige `Turn` (`endedAtSeconds = stopwatch.elapsed`),
+       opent direct een nieuwe `Turn` met de nieuwe formatie. De wissel telt zo mee
+       als beurt in de statistiek.
+     * **Herstel:** verwerpt de concept-opstelling, de huidige `Turn` blijft
+       ongewijzigd. De wissel telt niet mee als beurt.
+     Vóór de start van de wedstrijd (`status === 'planned'`) gaan aanpassingen
+     direct naar de eerste beurt (pre-match opstelling, geen bevestiging).
 3. **Bench**
-   * Impliciet: alle spelers die niet in `Turn.positions` staan.
+   * Impliciet: alle spelers die niet in `Turn.positions` staan (bij een pending
+     wissel toont de bank de concept-opstelling).
 4. **Actiebalk (Sticky Bottom)**
    * **⚽ Doelpunt:** modal met spelers in het veld → registreert `MatchEvent('goal')`.
    * **🅰️ Assist:** idem voor `'assist'`.
-   * **🔄 Volgende beurt:** sluit huidige `Turn` (zet `endedAtSeconds`), opent nieuwe `Turn` met huidige formatie als startpunt.
+   * **📊 Stats:** opent het statistiekenscherm.
+   * **🏁 Einde:** sluit de huidige beurt af en zet de wedstrijd op `finished`.
+   *(Een aparte "Volgende beurt"-knop bestaat niet meer: nieuwe beurten ontstaan
+   uitsluitend via een bevestigde wissel of een periode-overgang.)*
 
 ### 4.5 Import & Export
 * **Export:** Genereert `competitie_backup.json` met `{ schemaVersion, settings, players, matches }`.
@@ -235,7 +249,7 @@ Wanneer `elapsedSecondsBinnenPeriode >= periodLengthMin*60`:
 ### 7.6 Gebruikersinterface (UIR)
 * **UIR-1:** Visueel veld met Drag & Drop.
 * **UIR-2:** Stopwatch met Start/Pauze/Reset + periode-indicator.
-* **UIR-3:** Sticky actiebalk voor goal/assist/volgende beurt.
+* **UIR-3:** Sticky actiebalk voor goal/assist/stats/einde; nieuwe beurten ontstaan via een bevestigde wissel.
 * **UIR-4:** Posities als K/V/M/A.
 * **UIR-5:** Formatie schaalt automatisch:
   * 6v6: 1K-2V-1M-2A
