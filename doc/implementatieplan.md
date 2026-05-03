@@ -8,7 +8,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 
 ## Fase 1 — Projectskelet
 
-### Stap 1.1 — Vite + Vue 3 + TS scaffolding 🔲
+### Stap 1.1 — Vite + Vue 3 + TS scaffolding ✅
 **Doel:** Werkende lege Vue 3 + TypeScript app.
 **Acties:**
 - `npm create vite@latest . -- --template vue-ts` (in workspace root, naast `doc/`).
