@@ -91,7 +91,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 
 ## Fase 3 — Wedstrijdbeheer
 
-### Stap 3.1 — Formations-library 🔲
+### Stap 3.1 — Formations-library ✅
 **Doel:** `MatchType` → posities-array.
 **Acties:**
 - `lib/formations.ts`: `getFormation(type: MatchType): Position[]` met de mappings uit SDD §4.4.2.
@@ -99,7 +99,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** pure functie + tests groen.
 **Review:** counts kloppen.
 
-### Stap 3.2 — Wedstrijd-lijst & aanmaken 🔲
+### Stap 3.2 — Wedstrijd-lijst & aanmaken ✅
 **Doel:** Coach maakt nieuwe wedstrijd.
 **Acties:**
 - `MatchesView.vue`: lijst van matches (datum, tegenstander, status, score uit events).
@@ -108,7 +108,7 @@ Status: 🔲 todo · 🟡 in progress · ✅ done
 **Deliverable:** wedstrijd verschijnt in lijst.
 **Review:** correcte defaults, datum-input bruikbaar op mobiel.
 
-### Stap 3.3 — Suggester-library 🔲
+### Stap 3.3 — Suggester-library ✅
 **Doel:** Pure functie voor opstel-suggestie.
 **Acties:**
 - `lib/suggester.ts` volgens SDD §5.1.
